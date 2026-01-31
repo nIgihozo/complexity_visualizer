@@ -13,11 +13,11 @@ GET /analyze
 | **steps** | int | No | Step size between input sizes. Default is 10 |
 
 ### Example Request
-Code
+'''Code
 http://localhost:3000/analyze?algo=bubble&n=1000&steps=100
 
 ### Example Response (JSON)
-json
+'''json
 {
   "algo": "bubble",
   "items": 1000,
@@ -33,7 +33,7 @@ json
 
 - You can view it in your browser using the graph_file path:
 
-Code
+'''Code
 http://localhost:3000/static/graphs/bubble_1706380000.png
 
 ## Error Responses
@@ -51,11 +51,11 @@ http://localhost:3000/static/graphs/bubble_1706380000.png
 
 ## Setup Instructions
 **1. Install dependencies:**
-bash
+'''bash
 pip install flask numpy matplotlib
 
 **2. Run the app:**
-bash
+'''bash
 python answer.py
 
 **3. Test in your browser:**
