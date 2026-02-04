@@ -2,12 +2,36 @@ from flask import Flask, request, jsonify
 import time, os
 import numpy as np
 import matplotlib.pyplot as plt
+from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy.orm import declarative_base, sessionmaker
 
+# Flask app
 app = Flask(__name__)
 
-# Folder to save graph images
+# Graph directory
 GRAPH_DIR = "static/graphs"
 os.makedirs(GRAPH_DIR, exist_ok=True)
+
+# Database setup
+engine = create_engine("mysql+pymysql://<HOST_NAME>:<PASSWORD>@<USER_NAME>:<PORT>/<DATABASE_NAME") # Complete this using your credintials of your database
+Session = sessionmaker(bind=engine)
+session = Session()
+Base = declarative_base()
+
+# SQLAlchemy model
+class AnalysisResult(Base):
+    __tablename__ = 'analysis_results'
+    id = Column(Integer, primary_key=True)
+    algo = Column(String(50))
+    items = Column(Integer)
+    steps = Column(Integer)
+    start_time = Column(Float)
+    end_time = Column(Float)
+    total_time_ms = Column(Float)
+    time_complexity = Column(String(20))
+    path_to_graph = Column(String(255))
+
+Base.metadata.create_all(engine)
 
 # Algorithms
 def bubble_sort(n):
@@ -40,7 +64,6 @@ def nested_loops(n):
         for j in range(n):
             pass
 
-# Mapping query values to functions
 algorithms = {
     "bubble": bubble_sort,
     "linear": linear_search,
@@ -48,6 +71,7 @@ algorithms = {
     "nested": nested_loops
 }
 
+# Route for Analyze
 @app.route('/analyze')
 def analyze():
     algo_key = request.args.get('algo')
@@ -75,7 +99,6 @@ def analyze():
     ax.set_title(f"{algo_key} time complexity")
     ax.set_xlabel("Input size")
     ax.set_ylabel("Time (s)")
-
     # Save plot to file
     filename = f"{algo_key}_{int(time.time())}.png"
     filepath = os.path.join(GRAPH_DIR, filename)
@@ -92,6 +115,50 @@ def analyze():
         "graph_file": f"/{filepath}"
     })
 
+# To save Analysis to database
+@app.route('/save_analysis', methods=['POST'])
+def save_analysis():
+    data = request.get_json()
+    required = ['algo', 'items', 'steps', 'start_time', 'end_time', 'total_time_ms', 'time_complexity', 'path_to_graph']
+    if not all(k in data for k in required):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    result = AnalysisResult(
+        algo=data['algo'],
+        items=data['items'],
+        steps=data['steps'],
+        start_time=data['start_time'],
+        end_time=data['end_time'],
+        total_time_ms=data['total_time_ms'],
+        time_complexity=data['time_complexity'],
+        path_to_graph=data['path_to_graph']
+    )
+    session.add(result)
+    session.commit()
+
+    return jsonify({"message": "Analysis saved", "id": result.id}), 201
+
+# Retrieve Analysis from database
+@app.route('/retrieve_analysis')
+def retrieve_analysis():
+    analysis_id = request.args.get('id')
+    if not analysis_id:
+        return jsonify({"error": "Missing analysis ID"}), 400
+
+    result = session.get(AnalysisResult, int(analysis_id))
+    if not result:
+        return jsonify({"error": "Analysis not found. Check your ID & Try again"}), 404
+
+    return jsonify({
+        "algo": result.algo,
+        "items": result.items,
+        "steps": result.steps,
+        "start_time": result.start_time,
+        "end_time": result.end_time,
+        "total_time_ms": result.total_time_ms,
+        "time_complexity": result.time_complexity,
+        "path_to_graph": result.path_to_graph
+    })
+
 if __name__ == '__main__':
     app.run(port=3000)
-
